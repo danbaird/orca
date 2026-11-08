@@ -23,10 +23,11 @@ export type ClaudeLaunchAccountResolverDeps = {
   resolveRepoPin?: (context: ClaudeLaunchContext) => ClaudeRepoAccountPin | null
   /** Saved and signed in (or covered by System default), so a launch on it cannot fail for auth. */
   launchable: (accountId: string) => boolean
+  now?: () => number
 }
 
-/** Repo pin, then a rotation recorded for the pane, then the global selection. A pin that
- *  needs sign-in falls back to the global selection with a warning, never to a silent failure. */
+/** A held rotation, then the repo pin, then the global selection. A pin that needs sign-in
+ *  falls back to the global selection with a warning, never to a silent failure. */
 export class ClaudeLaunchAccountResolver {
   constructor(private readonly deps: ClaudeLaunchAccountResolverDeps) {}
 
@@ -40,6 +41,10 @@ export class ClaudeLaunchAccountResolver {
     if (!context) {
       return global
     }
+    const rotation = this.heldRotation(context, globalId)
+    if (rotation) {
+      return rotation
+    }
     const pin = this.deps.resolveRepoPin?.(context) ?? null
     if (pin) {
       if (this.deps.launchable(pin.accountId)) {
@@ -49,18 +54,26 @@ export class ClaudeLaunchAccountResolver {
         `[claude-profile] Claude account ${pin.accountId} pinned for ${pin.repoKey} needs sign-in; launching on the global selection instead.`
       )
     }
-    const pane = context.paneId ? this.deps.paneAccounts?.get(context.paneId) : null
-    // A rotation holds until the person changes the global selection themselves.
-    if (
-      pane?.source === 'rotation' &&
-      pane.selectionKey === 'host' &&
-      pane.accountId &&
-      pane.globalAccountId === globalId &&
-      this.deps.launchable(pane.accountId)
-    ) {
-      return { accountId: pane.accountId, source: 'rotation', repoKey: pane.repoKey }
-    }
     return global
+  }
+
+  /** A rotation holds until the exhausted account resets or the person changes the global selection. */
+  private heldRotation(
+    context: ClaudeLaunchContext,
+    globalId: string | null
+  ): ClaudeLaunchAccountResolution | null {
+    const pane = context.paneId ? this.deps.paneAccounts?.get(context.paneId) : null
+    if (
+      pane?.source !== 'rotation' ||
+      pane.selectionKey !== 'host' ||
+      !pane.accountId ||
+      pane.globalAccountId !== globalId ||
+      (pane.holdUntil !== undefined && (this.deps.now?.() ?? Date.now()) >= pane.holdUntil) ||
+      !this.deps.launchable(pane.accountId)
+    ) {
+      return null
+    }
+    return { accountId: pane.accountId, source: 'rotation', repoKey: pane.repoKey }
   }
 
   /** Remember what the pane launched with, so rotation and the usage display agree with it. */

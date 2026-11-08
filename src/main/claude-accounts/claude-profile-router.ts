@@ -120,7 +120,7 @@ export class ClaudeProfileRouter {
     return id ? this.describe(id) : null
   }
 
-  /** Repo pin, then a rotation recorded for the pane, then the global selection. */
+  /** A held rotation, then the repo pin, then the global selection. */
   resolveLaunchAccount(context?: ClaudeLaunchContext): ClaudeLaunchAccountResolution {
     return this.launches.resolve(context)
   }

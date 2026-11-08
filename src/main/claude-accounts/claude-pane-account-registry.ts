@@ -19,6 +19,10 @@ export type ClaudePaneAccountRecord = {
   cwd?: string
   /** The global selection when recorded; a rotation yields once the person changes it. */
   globalAccountId?: string | null
+  /** The exhausted account a rotation moved the pane off. */
+  rotatedFromAccountId?: string
+  /** Unix ms until which a rotation beats the repo pin and global selection: the old account's reset. */
+  holdUntil?: number
   recordedAt: number
 }
 
@@ -150,6 +154,8 @@ function sameRecord(a: ClaudePaneAccountRecord, b: ClaudePaneAccountRecord): boo
     a.repoKey === b.repoKey &&
     a.cwd === b.cwd &&
     a.globalAccountId === b.globalAccountId &&
+    a.rotatedFromAccountId === b.rotatedFromAccountId &&
+    a.holdUntil === b.holdUntil &&
     a.paneKind === b.paneKind
   )
 }
