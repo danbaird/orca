@@ -2,7 +2,7 @@
 
 import React, { type ReactNode } from 'react'
 
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GlobalSettings } from '../../../../../../shared/global-settings-types'
 
@@ -16,13 +16,11 @@ type Mocks = {
   state: Record<string, unknown>
   cacheStartedAt: number | null
   deleteModifier: boolean
-  hoverOpenChange: ((open: boolean) => void) | undefined
 }
 const mocks = vi.hoisted((): Mocks => ({
   state: {},
   cacheStartedAt: null,
-  deleteModifier: false,
-  hoverOpenChange: undefined
+  deleteModifier: false
 }))
 
 vi.mock('@/store', () => {
@@ -34,28 +32,21 @@ vi.mock('@/store', () => {
   }
 })
 vi.mock('@/components/ui/hover-card', () => ({
-  HoverCard: ({
-    children,
-    open,
-    onOpenChange
-  }: {
-    children: ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    mocks.hoverOpenChange = onOpenChange
-    return (
-      <div data-hover-card="" data-hover-open={Boolean(open)}>
-        {children}
-      </div>
-    )
-  },
+  HoverCard: ({ children, open }: { children: ReactNode; open?: boolean }) => (
+    <div data-hover-card="" data-hover-open={Boolean(open)}>
+      {children}
+    </div>
+  ),
   HoverCardContent: ({ children }: { children: ReactNode }) => (
     <div data-hover-card-content="">{children}</div>
   ),
-  HoverCardTrigger: ({ children }: { children: ReactNode }) =>
+  HoverCardTrigger: ({
+    children,
+    asChild: _asChild,
+    ...props
+  }: { children: ReactNode; asChild?: boolean } & Record<string, unknown>) =>
     React.isValidElement<Record<string, unknown>>(children) ? (
-      React.cloneElement(children, { 'data-hover-card-trigger': '' })
+      React.cloneElement(children, { ...props, 'data-hover-card-trigger': '' })
     ) : (
       <>{children}</>
     )
@@ -240,11 +231,14 @@ describe('default workspace card template parity with the original card', () => 
   beforeEach(() => {
     mocks.cacheStartedAt = null
     mocks.deleteModifier = false
-    mocks.hoverOpenChange = undefined
   })
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   it('suppresses a delayed details hover while a template identity icon is focused', () => {
+    vi.useFakeTimers()
     mocks.state = stateFor(STYLES.new, {})
     const { container } = render(
       <Harness
@@ -258,15 +252,19 @@ describe('default workspace card template parity with the original card', () => 
     )
     const icon = screen.getByRole('img', { name: 'Sparse checkout' })
     const hover = container.querySelector('[data-hover-card]')
-    expect(hover).not.toBeNull()
-    expect(mocks.hoverOpenChange).toBeTypeOf('function')
+    const trigger = hover?.querySelector('[data-hover-card-trigger]')
+    expect(trigger).toBeTruthy()
+    const restOnTrigger = (x: number): void => {
+      fireEvent.pointerMove(trigger!, { clientX: x, clientY: 1, pointerType: 'mouse' })
+      act(() => vi.advanceTimersByTime(1000))
+    }
 
     act(() => icon.focus())
-    act(() => mocks.hoverOpenChange?.(true))
+    restOnTrigger(1)
     expect(hover?.getAttribute('data-hover-open')).toBe('false')
 
     act(() => icon.blur())
-    act(() => mocks.hoverOpenChange?.(true))
+    restOnTrigger(2)
     expect(hover?.getAttribute('data-hover-open')).toBe('true')
   })
 })
