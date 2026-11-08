@@ -313,6 +313,8 @@ export type GlobalSettings = GlobalSettingsBase & {
   claudeManagedAccounts: ClaudeManagedAccount[]
   activeClaudeManagedAccountId: string | null
   activeClaudeManagedAccountIdsByRuntime?: ClaudeManagedAccountRuntimeSelection
+  /** Repo id or path to the managed Claude account (id or email) its launches use; overrides the repo's orca.yaml. */
+  claudeAccountByRepo?: Record<string, string>
   /** Dismissed the "System default may hold a copied login" notice in Settings > Accounts. */
   claudeCopiedSystemDefaultNoticeDismissed?: boolean
   /** Scope bash/zsh HISTFILE and fish_history by worktree so ArrowUp does not expose other worktrees’ commands; default true. */

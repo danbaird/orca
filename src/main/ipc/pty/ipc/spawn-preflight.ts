@@ -1,3 +1,4 @@
+import { ptySpawnClaudeLaunchContext } from '../spawn-pane-env'
 import { withClaudeProfileTerminalEnv } from '../../../claude-accounts/claude-profile-installed-router'
 import { mintPtySessionId } from '../../../daemon/sessions/pty-session-id'
 import { LocalPtyProvider } from '../../../providers/local-pty/local-pty-provider'
@@ -116,10 +117,11 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
   ctx.wslHoldReadAnchor = target.wslHoldReadAnchor
   ctx.codexSelectionTarget = target.codexSelectionTarget
   ctx.spawnTiming.mark('preflight')
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
+  const launchContext = ptySpawnClaudeLaunchContext(args, ctx.cwd, ctx.effectiveSessionId)
+  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget, launchContext)
   ctx.claudeAuth =
     ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
+      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget, launchContext)
       : null
   ctx.spawnTiming.mark('auth')
 }

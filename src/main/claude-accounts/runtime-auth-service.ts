@@ -13,6 +13,9 @@ import {
   installClaudeWslProfileRouter
 } from './claude-profile-installed-router'
 import { ClaudeObservedConfigDirs } from './claude-observed-config-dirs'
+import type { ClaudeLaunchContext } from './claude-launch-context'
+import { ClaudePaneAccountRegistry } from './claude-pane-account-registry'
+import { resolveClaudeRepoAccountPin } from './claude-repo-account-pin'
 import type { ClaudeAccountSelectionTarget } from './runtime-selection'
 import type { ClaudeRuntimeAuthPreparation } from './runtime-auth/runtime-auth-types'
 
@@ -23,16 +26,29 @@ export type ClaudeAccountFolder = { configDir: string; readPath: string }
 
 export class ClaudeRuntimeAuthService {
   readonly router: ClaudeProfileRouter
+  /** Which account each pane launched with, shared with rotation. */
+  readonly paneAccounts: ClaudePaneAccountRegistry
   private readonly wslRouter?: ClaudeWslProfileRouter
   private readonly dataRoot = getAppEnvironment().getPath('userData')
   private mutationQueue: Promise<unknown> = Promise.resolve()
 
   constructor(
-    private readonly store: Pick<Store, 'getSettings'>,
+    private readonly store: Pick<Store, 'getSettings'> & Partial<Pick<Store, 'getRepos'>>,
     private readonly isDistroRunning: (distro: string) => Promise<boolean> = isWslDistroRunning
   ) {
     const args = { getSettings: () => store.getSettings(), dataRoot: this.dataRoot }
-    this.router = new ClaudeProfileRouter(args)
+    this.paneAccounts = new ClaudePaneAccountRegistry(
+      join(this.dataRoot, 'claude-pane-accounts.json')
+    )
+    this.router = new ClaudeProfileRouter({
+      ...args,
+      paneAccounts: this.paneAccounts,
+      resolveRepoPin: (context) =>
+        resolveClaudeRepoAccountPin(context, {
+          settings: store.getSettings(),
+          repos: store.getRepos?.() ?? []
+        })
+    })
     installClaudeProfileRouter(this.router)
     installClaudeObservedConfigDirs(
       new ClaudeObservedConfigDirs(join(this.dataRoot, 'claude-observed-config-dirs.json'), () =>
@@ -46,11 +62,13 @@ export class ClaudeRuntimeAuthService {
     })
   }
 
+  /** WSL launches keep the distro's own selection; repo pins and pane records route host launches. */
   prepareForClaudeLaunch(
-    target?: ClaudeAccountSelectionTarget
+    target?: ClaudeAccountSelectionTarget,
+    context?: ClaudeLaunchContext
   ): Promise<ClaudeRuntimeAuthPreparation> {
     const wsl = this.wslRouteFor(target)
-    return wsl ? wsl.router.prepareLaunch(wsl.distro) : this.router.prepareLaunch()
+    return wsl ? wsl.router.prepareLaunch(wsl.distro) : this.router.prepareLaunch(context)
   }
 
   async prepareForRateLimitFetch(

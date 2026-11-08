@@ -18,7 +18,11 @@ import { isRuntimeWslBackgroundStart, type RuntimePtySpawnState } from './spawn-
 import { localPtySpawnCwd } from '../host-env/spawn-cwd'
 import { resolvePtySpawnStartupTarget } from '../spawn-startup-target'
 import { resolvePtySpawnHostEnv } from '../spawn-host-env'
-import { ptySpawnPaneFromIds, stampPtySpawnPaneEnv } from '../spawn-pane-env'
+import {
+  ptySpawnClaudeLaunchContext,
+  ptySpawnPaneFromIds,
+  stampPtySpawnPaneEnv
+} from '../spawn-pane-env'
 import { getConnectionExecutionHostId } from '../../../../shared/execution-host'
 import {
   ensureJcodeRuntimeDir,
@@ -100,10 +104,11 @@ export async function prepareRuntimePtySpawn(
   ctx.expectedWslDistro = target.expectedWslDistro
   ctx.wslHoldReadAnchor = target.wslHoldReadAnchor
   ctx.codexSelectionTarget = target.codexSelectionTarget
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
+  const launchContext = ptySpawnClaudeLaunchContext(args, ctx.cwd, ctx.sessionId)
+  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget, launchContext)
   ctx.claudeAuth =
     ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
+      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget, launchContext)
       : null
 
   ctx.shouldPersistHostSessionBinding = args.persistHostSessionBinding === true

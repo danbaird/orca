@@ -13,6 +13,7 @@ export type OrcaHooks = {
   environmentRecipes?: OrcaVmRecipe[] // Project-scoped per-workspace environment recipes
   environmentRecipeDiagnostics?: OrcaVmRecipeDiagnostic[] // Non-fatal validation issues from environmentRecipes
   worktree?: OrcaWorktreeDefaults // Project-scoped defaults applied when a worktree is created
+  claudeAccount?: string // Managed Claude account (email or id) this repo's Claude launches use
 }
 
 export type OrcaWorktreeDefaults = {
