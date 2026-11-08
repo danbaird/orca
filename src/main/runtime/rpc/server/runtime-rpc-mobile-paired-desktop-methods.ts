@@ -43,6 +43,7 @@ export const PAIRED_DESKTOP_METHODS = [
   'accounts.consumeCodexResetCredit',
   'accounts.list',
   'accounts.selectClaude',
+  'accounts.selectClaudeForTarget',
   'accounts.selectCodex',
   'accounts.selectCodexForTarget',
   'accounts.subscribe',

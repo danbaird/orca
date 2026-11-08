@@ -16,7 +16,6 @@ import {
   ListAccountsParams,
   RemoveAccountParams,
   SelectAccountParams,
-  SelectClaudeAccountParams,
   SelectCodexAccountForTargetParams,
   HostAccountSignInStartParams,
   HostAccountSignInWaitParams,
@@ -25,6 +24,7 @@ import {
 } from '../../../../../shared/rpc-contract/accounts-params'
 import { HostAccountLaunchEnvParams } from '../../../../../shared/host-account-launch-env'
 import { withTimeout } from '../../../../../shared/promise-timeout-fallback'
+import { CLAUDE_SELECTION_METHOD_DEFINITIONS } from './accounts-claude-selection'
 
 // Use a per-process counter: same-millisecond subscriptions must not evict each other's cleanup.
 let accountsSubscriptionSeq = 0
@@ -151,15 +151,7 @@ const ACCOUNT_METHOD_DEFINITIONS = [
       return runtime.getAccountsSnapshot()
     }
   }),
-  defineMethod({
-    name: 'accounts.selectClaude',
-    permission: 'accounts-admin',
-    params: SelectClaudeAccountParams,
-    handler: async (params, { runtime }) =>
-      runtime.selectClaudeAccount(params.accountId, {
-        movesRunningSessions: params.movesRunningSessions
-      })
-  }),
+  ...CLAUDE_SELECTION_METHOD_DEFINITIONS,
   defineMethod({
     name: 'accounts.selectCodex',
     permission: 'accounts-admin',

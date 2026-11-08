@@ -46,6 +46,22 @@ export const SelectCodexAccountForTargetParams = SelectAccountParams.extend({
   target: CodexSelectionTarget
 })
 
+export const ClaudeSelectionTarget = z.discriminatedUnion('runtime', [
+  z.object({ runtime: z.literal('host'), wslDistro: z.null() }).strict(),
+  z
+    .object({
+      runtime: z.literal('wsl'),
+      // A null distro means the default distro, as Claude launches resolve it.
+      wslDistro: z.string().trim().min(1).max(255).nullable()
+    })
+    .strict()
+])
+
+/** Mirrors selectCodexForTarget: a WSL caller must name its distro, or `system` would clear the host slot. */
+export const SelectClaudeAccountForTargetParams = SelectAccountParams.extend({
+  target: ClaudeSelectionTarget
+})
+
 export const RemoveAccountParams = z.object({
   accountId: z.string().min(1, 'Missing accountId')
 })

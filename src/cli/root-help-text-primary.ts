@@ -27,6 +27,7 @@ export const ROOT_HELP_TEXT_PRIMARY = [
   '  account add               Add a managed agent account on this Orca host',
   '  account list              List managed agent accounts on this Orca host',
   '  account select            Select the account new agent launches use',
+  '  account usage             Show 5-hour and 7-day usage for each managed Claude account',
   '  account rm                Remove a managed agent account and its private data',
   '',
   'Skills:',

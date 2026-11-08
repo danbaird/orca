@@ -54,6 +54,17 @@ export const ACCOUNT_COMMAND_SPECS: CommandSpec[] = [
     ]
   },
   {
+    path: ['account', 'usage'],
+    summary: "List each managed Claude account's 5-hour and 7-day usage on this Orca host",
+    usage: 'orca account usage --agent claude [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'agent'],
+    notes: [
+      "Reads the host's usage poller for every saved Claude account, active or not, so a script can pick the account with the most headroom before `orca account select`.",
+      'Stale readings refresh within the host throttles before the reply; `--json` carries usedPercent and resetsAt per window.'
+    ],
+    examples: ['orca account usage --agent claude --json']
+  },
+  {
     path: ['account', 'rm'],
     aliases: [['account', 'remove']],
     destructive: true,
