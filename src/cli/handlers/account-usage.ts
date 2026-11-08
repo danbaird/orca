@@ -60,7 +60,7 @@ function activeIds(state: ClaudeRateLimitAccountsState): Set<string | null> {
 function readingFor(
   account: ClaudeManagedAccountSummary,
   active: boolean,
-  rateLimits: RateLimitState
+  rateLimits: ClaudeAccountUsageSource
 ): ProviderRateLimits | null {
   const inactive = rateLimits.inactiveClaudeAccounts.find(
     (entry) => entry.accountId === account.id
@@ -71,9 +71,14 @@ function readingFor(
   return active ? rateLimits.claude : null
 }
 
+export type ClaudeAccountUsageSource = Pick<
+  RateLimitState,
+  'claude' | 'claudeTarget' | 'inactiveClaudeAccounts'
+>
+
 export function claudeAccountUsageReport(snapshot: {
   claude: ClaudeRateLimitAccountsState
-  rateLimits: RateLimitState
+  rateLimits: ClaudeAccountUsageSource
 }): ClaudeAccountUsageReport {
   const active = activeIds(snapshot.claude)
   return {

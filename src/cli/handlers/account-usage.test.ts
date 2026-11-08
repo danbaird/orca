@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ClaudeManagedAccountSummary } from '../../shared/managed-account-types'
-import type { ProviderRateLimits, RateLimitState } from '../../shared/rate-limit-types'
-import { claudeAccountUsageReport, formatClaudeAccountUsage } from './account-usage'
+import type { ProviderRateLimits } from '../../shared/rate-limit-types'
+import {
+  claudeAccountUsageReport,
+  formatClaudeAccountUsage,
+  type ClaudeAccountUsageSource
+} from './account-usage'
 
 function account(id: string, extra: Partial<ClaudeManagedAccountSummary> = {}) {
   return {
@@ -26,13 +30,13 @@ function reading(session: number, weekly: number, resetsAt: number): ProviderRat
   }
 }
 
-const rateLimits = {
+const rateLimits: ClaudeAccountUsageSource = {
   claude: reading(97, 40, 5_000),
   claudeTarget: { runtime: 'host', wslDistro: null },
   inactiveClaudeAccounts: [
     { accountId: 'b', rateLimits: reading(12, 55, 9_000), updatedAt: 1_000, isFetching: false }
   ]
-} as unknown as RateLimitState
+}
 
 describe('claudeAccountUsageReport', () => {
   it('reads the active account from the live meter and the others from the inactive cache', () => {

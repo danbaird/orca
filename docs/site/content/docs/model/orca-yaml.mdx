@@ -42,6 +42,7 @@ All keys are optional. Script, title, command, and path values must be strings; 
 | `defaultTabs`                | List of mappings with optional `title`, `command`, and `color`. At least one valid field is required per entry. `color` accepts `#RGB` or `#RRGGBB`.                                                  | Normal initial terminal behavior.                                             |
 | `worktree.sharedDirectories` | List of repository-relative directory paths. Only existing, gitignored directories are shared.                                                                                                        | Only the user's Settings shared paths apply.                                  |
 | `environmentRecipes`         | List of per-workspace environment recipes. See [Cloud VMs](/docs/ways-to-run#4-cloud-vms-per-workspace-environments) and the `orca-per-workspace-env` skill for recipe fields and lifecycle commands. | No project recipes.                                                           |
+| `claudeAccount`              | Email or id of a managed Claude account saved on the host (`orca account list`). Claude launches in this checkout run on it; a `claudeAccountByRepo` Settings entry for the repo wins over this key.  | Launches follow the host's global Claude account selection.                   |
 
 `scripts` and `worktree` must be mappings; `defaultTabs`, `environmentRecipes`, and `sharedDirectories` must be lists. `setupRunPolicy` and `commandSourcePolicy` are **Settings values**, not accepted `orca.yaml` keys.
 
