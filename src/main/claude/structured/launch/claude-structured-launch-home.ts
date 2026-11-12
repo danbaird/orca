@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import type { ClaudeProfileRouter } from '../../../claude-accounts/claude-profile-router'
+import type { ClaudeLaunchContext } from '../../../claude-accounts/claude-launch-context'
 import { AgentSessionPreSpawnError } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter-errors'
 import { resolveSessionFilePath } from '../../../native-chat/session-file-resolver'
 import { prepareClaudeLaunchAccount } from '../../claude-launch-account'
@@ -8,9 +9,10 @@ import { prepareClaudeLaunchAccount } from '../../claude-launch-account'
 export async function resolveClaudeStructuredLaunchHome(
   router: ClaudeProfileRouter | undefined,
   env: Record<string, string>,
-  recordHome: string
+  recordHome: string,
+  context?: ClaudeLaunchContext
 ): Promise<string> {
-  return (await prepareClaudeLaunchAccount(router, env, recordHome)).home
+  return (await prepareClaudeLaunchAccount(router, env, recordHome, context)).home
 }
 
 async function claudeTranscriptExists(input: {

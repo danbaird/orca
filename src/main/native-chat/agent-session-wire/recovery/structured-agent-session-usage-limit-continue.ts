@@ -2,61 +2,20 @@ import { AgentSessionPreDispatchError } from '../operations/structured-agent-ses
 import { createHash, randomUUID } from 'node:crypto'
 import {
   isNativeChatUsageLimitCutSchedulable,
-  latestNativeChatUsageLimitCut,
   NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE,
   type NativeChatUsageLimitCut
 } from '../../../../shared/native-chat/native-chat-usage-limit-cut'
 import { structuredAgentSessionMessageSendMutation } from '../../../../shared/agent-session/requests/structured-agent-session-send-mutation'
 import type { AgentSessionStatusSummary } from '../../../../shared/agent-session/agent-session-wire'
-import { restoreJournal } from '../../agent-session-journal/replay/journal-open'
-import { renderJournalStatus } from '../../agent-session-journal/projection/journal-public-read'
-import { journalInputOrder } from '../../agent-session-journal/input-order/journal-input-order'
-import type { StructuredAgentSessionHostDeps } from '../host/structured-agent-session-host-types'
-import type Database from '../../../sqlite/sync-database'
-import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
-import type { sendStructuredAgentSessionTurn } from '../operations/structured-agent-session-host-mutations'
 import { RestartContinuationSupersededError } from './structured-agent-session-restart-continuation'
+import {
+  identity,
+  type Attempt,
+  type Cut,
+  type Deps
+} from './structured-agent-session-usage-limit-continue-deps'
 
-type Cut = NativeChatUsageLimitCut & { resetsAt: number; turnEndedAt: number }
-type Attempt = { identity: string; count: number; at: number; unconfirmed?: boolean }
-type Deps = {
-  host: Pick<StructuredAgentSessionHostDeps, 'usageLimitAutoContinue' | 'logger'> & {
-    store: Pick<
-      AgentSessionRecordStore,
-      | 'listVisibleSessionIds'
-      | 'getRecord'
-      | 'hostId'
-      | 'isSessionTabVisible'
-      | 'cancelUsageLimitContinue'
-    >
-  }
-  sessions: ReadonlyMap<string, unknown>
-  /** Reads an unopened chat's saved cut; history-sized, so the sweep budgets it. */
-  readSavedCut: (id: string) => NativeChatUsageLimitCut | null
-  serialize: <T>(id: string, run: () => Promise<T>) => Promise<T>
-  send: (
-    params: Parameters<typeof sendStructuredAgentSessionTurn>[2]
-  ) => ReturnType<typeof sendStructuredAgentSessionTurn>
-  readLoadedCut: (id: string) => NativeChatUsageLimitCut | null
-  publish: (id: string) => void
-  now: () => number
-}
-
-/** Reads a chat's saved conversation without opening it, as main does for unopened chats. */
-export function readSavedUsageLimitCut(
-  db: Database.Database,
-  id: string
-): NativeChatUsageLimitCut | null {
-  const load = restoreJournal(db, id)
-  const snapshot =
-    load && !load.newer && !load.damage
-      ? renderJournalStatus(load.state, journalInputOrder(load.state))
-      : null
-  return snapshot ? latestNativeChatUsageLimitCut(snapshot.items, snapshot.submissions) : null
-}
-
-const identity = (cut: NativeChatUsageLimitCut): string =>
-  JSON.stringify([cut.turnItemId, cut.resetsAt])
+export { readSavedUsageLimitCut } from './structured-agent-session-usage-limit-continue-deps'
 
 /** Scheduling is derived from the current cut; only a person's cancellation survives restart. */
 export class StructuredAgentSessionUsageLimitContinue {
@@ -162,11 +121,36 @@ export class StructuredAgentSessionUsageLimitContinue {
     return { turnItemId: cut.turnItemId, resetsAt: cut.resetsAt, state }
   }
 
-  private eligible(id: string, cut: NativeChatUsageLimitCut): cut is Cut {
+  /** Loaded chats that stopped on a usage limit Orca could continue; account rotation reads these. */
+  listLoadedCuts(): { sessionId: string; cut: NativeChatUsageLimitCut }[] {
+    const cuts: { sessionId: string; cut: NativeChatUsageLimitCut }[] = []
+    for (const id of this.deps.sessions.keys()) {
+      const cut = this.deps.readLoadedCut(id)
+      if (cut && isNativeChatUsageLimitCutSchedulable(cut, this.deps.now())) {
+        cuts.push({ sessionId: id, cut })
+      }
+    }
+    return cuts
+  }
+
+  /** Continue a cut chat now rather than at its reset: its next launch lands on another account. */
+  continueNow(id: string): Promise<boolean> {
+    const cut = this.readCut(id, true)
+    if (!cut || !this.eligible(id, cut, { atReset: false })) {
+      return Promise.resolve(false)
+    }
+    return this.send(id, cut, { atReset: false })
+  }
+
+  private eligible(
+    id: string,
+    cut: NativeChatUsageLimitCut,
+    { atReset = true }: { atReset?: boolean } = {}
+  ): cut is Cut {
     const record = this.deps.host.store.getRecord(id)
     return (
       !this.disposed &&
-      this.deps.host.usageLimitAutoContinue?.isEnabled() === true &&
+      (!atReset || this.deps.host.usageLimitAutoContinue?.isEnabled() === true) &&
       isNativeChatUsageLimitCutSchedulable(cut, this.deps.now()) &&
       record !== null &&
       record.location.executionHostId === this.deps.host.store.hostId &&
@@ -259,10 +243,14 @@ export class StructuredAgentSessionUsageLimitContinue {
     }
   }
 
-  private async send(id: string, cut: Cut): Promise<void> {
+  private async send(
+    id: string,
+    cut: Cut,
+    { atReset = true }: { atReset?: boolean } = {}
+  ): Promise<boolean> {
     const record = this.deps.host.store.getRecord(id)
     if (!record) {
-      return
+      return false
     }
     const at = this.deps.now()
     const attempt: Attempt = {
@@ -289,25 +277,25 @@ export class StructuredAgentSessionUsageLimitContinue {
           if (
             !current ||
             identity(current) !== identity(cut) ||
-            !this.eligible(id, current) ||
-            this.deps.now() < cut.resetsAt + 15_000
+            !this.eligible(id, current, { atReset }) ||
+            (atReset && this.deps.now() < cut.resetsAt + 15_000)
           ) {
             throw new RestartContinuationSupersededError()
           }
         }
       })
       if (result.ok) {
-        return
+        return true
       }
       if (result.refusal.details?.reason === 'continuationSuperseded') {
         this.deferUnchangedCut(id, cut, at)
-        return
+        return false
       }
       this.attempts.set(id, attempt)
     } catch (error) {
       if (error instanceof RestartContinuationSupersededError) {
         this.deferUnchangedCut(id, cut, at)
-        return
+        return false
       }
       // An exception cannot prove the message was refused before acceptance; never send it twice.
       this.attempts.set(
@@ -321,5 +309,6 @@ export class StructuredAgentSessionUsageLimitContinue {
       })
     }
     this.deps.publish(id)
+    return false
   }
 }

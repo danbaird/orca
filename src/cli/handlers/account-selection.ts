@@ -45,7 +45,7 @@ type ProviderAccounts = {
   remove: (accountId: string) => Promise<void>
 }
 
-type ClaudeCodexSnapshot = {
+export type ClaudeCodexSnapshot = {
   claude: ClaudeRateLimitAccountsState
   codex: CodexRateLimitAccountsState
 }
@@ -54,14 +54,14 @@ function emailChoices(state: { accounts: readonly { id: string; email: string }[
   return state.accounts.map((account) => ({ id: account.id, names: [account.email] }))
 }
 
-function claudeAccounts({ client, json }: HandlerContext): ProviderAccounts {
+function claudeAccounts({ client, cwd, json }: HandlerContext): ProviderAccounts {
   const read = () => client.call<ClaudeCodexSnapshot>('accounts.list', { refreshUsage: false })
-  const print = async (method: string, accountId: string | null) =>
-    printResult(
-      await client.call<ClaudeRateLimitAccountsState>(method, { accountId }),
-      json,
-      (state) => formatAccountsBlock('Claude', state)
+  const print = async (method: string, params: Record<string, unknown>) =>
+    printResult(await client.call<ClaudeRateLimitAccountsState>(method, params), json, (state) =>
+      formatAccountsBlock('Claude', state)
     )
+  // Why ForTarget from WSL: plain selectClaude carries no target, so `system` would clear the host slot.
+  const wslTarget = getWslAccountTarget(cwd)
   return {
     label: 'Claude',
     hasSystemDefault: true,
@@ -72,8 +72,11 @@ function claudeAccounts({ client, json }: HandlerContext): ProviderAccounts {
         formatAccountsBlock('Claude', state)
       )
     },
-    select: (accountId) => print('accounts.selectClaude', accountId),
-    remove: (accountId) => print('accounts.removeClaude', accountId)
+    select: (accountId) =>
+      wslTarget
+        ? print('accounts.selectClaudeForTarget', { accountId, target: wslTarget })
+        : print('accounts.selectClaude', { accountId }),
+    remove: (accountId) => print('accounts.removeClaude', { accountId })
   }
 }
 
@@ -213,7 +216,7 @@ function isAccountAgent(value: string): value is AccountAgent {
 
 // Why required: switching or removing an account decides which subscription is billed,
 // so the provider is never guessed.
-function readAgentFlag(ctx: HandlerContext): AccountAgent {
+export function readAgentFlag(ctx: HandlerContext): AccountAgent {
   const agent = ctx.flags.get('agent')
   if (typeof agent !== 'string') {
     throw new RuntimeClientError('invalid_argument', AGENT_FLAG_HINT)
@@ -290,14 +293,6 @@ function resolveSavedAccountId(
 export async function selectAgentAccount(ctx: HandlerContext): Promise<void> {
   const agent = readAgentFlag(ctx)
   const query = readAccountFlag(ctx)
-  // Why: accounts.selectClaude carries no target, so `system` from the WSL bridge
-  // would reset the Windows host's selection instead of the distro's.
-  if (agent === 'claude' && query === 'system' && getWslAccountTarget(ctx.cwd)) {
-    throw new RuntimeClientError(
-      'invalid_argument',
-      'Select the Claude system default for a WSL distro in Orca Settings > AI Provider Accounts.'
-    )
-  }
   const provider = providerAccounts(ctx, agent)
   const accountId = resolveAccountId(provider.label, await provider.choices(), query, {
     allowSystem: provider.hasSystemDefault

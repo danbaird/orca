@@ -6,6 +6,22 @@ import {
 import { applyScrubSafeAgentEnvAliases } from '../../../shared/agent-hook-listener/transport/agent-hook-scrub-safe-env'
 import { isTerminalLeafId, makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
 import { isValidTerminalTabId } from '../../../shared/workspace-layout/terminal-tab-id'
+import type { ClaudeLaunchContext } from '../../claude-accounts/claude-launch-context'
+
+/** Routing context for the pane's Claude launches: its repo (via cwd and worktree) and its pane key. */
+export function ptySpawnClaudeLaunchContext(
+  ids: { tabId?: string; leafId?: string; worktreeId?: string },
+  cwd: string | undefined,
+  sessionId: string | undefined
+): ClaudeLaunchContext {
+  const pane = ptySpawnPaneFromIds(ids)
+  return {
+    cwd: cwd ?? null,
+    workspaceId: ids.worktreeId ?? null,
+    paneId: pane?.paneKey ?? sessionId ?? null,
+    paneKind: 'terminal'
+  }
+}
 
 export type PtySpawnPane = {
   paneKey: string

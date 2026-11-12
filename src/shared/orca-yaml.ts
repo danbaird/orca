@@ -232,6 +232,7 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
   const sharedDirectories = worktreeRecord
     ? normalizeSharedDirectories(worktreeRecord.sharedDirectories)
     : []
+  const claudeAccount = asTrimmedString(record.claudeAccount)
 
   if (
     !setup &&
@@ -241,7 +242,8 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
     defaultTabs.length === 0 &&
     environmentRecipes.length === 0 &&
     environmentRecipeDiagnostics.length === 0 &&
-    sharedDirectories.length === 0
+    sharedDirectories.length === 0 &&
+    !claudeAccount
   ) {
     return null
   }
@@ -256,6 +258,7 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
     ...(defaultTabs.length > 0 ? { defaultTabs } : {}),
     ...(environmentRecipes.length > 0 ? { environmentRecipes } : {}),
     ...(environmentRecipeDiagnostics.length > 0 ? { environmentRecipeDiagnostics } : {}),
-    ...(sharedDirectories.length > 0 ? { worktree: { sharedDirectories } } : {})
+    ...(sharedDirectories.length > 0 ? { worktree: { sharedDirectories } } : {}),
+    ...(claudeAccount ? { claudeAccount } : {})
   }
 }

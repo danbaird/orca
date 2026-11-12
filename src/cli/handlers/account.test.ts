@@ -786,7 +786,9 @@ describe('account CLI handlers', () => {
               ? { capabilities: [ANTIGRAVITY_ACCOUNTS_RUNTIME_CAPABILITY] }
               : method.startsWith('accounts.antigravity')
                 ? antigravityAccounts
-                : { claude: claudeAccounts, codex: { accounts: [], activeAccountId: null } },
+                : method === 'accounts.selectClaudeForTarget'
+                  ? claudeAccounts
+                  : { claude: claudeAccounts, codex: { accounts: [], activeAccountId: null } },
           _meta: { runtimeId: 'test-runtime' }
         })
       )
@@ -823,14 +825,15 @@ describe('account CLI handlers', () => {
       expect(mutatingCalls()).toEqual([])
     })
 
-    it('refuses the Claude system default from WSL rather than resetting the Windows host', async () => {
+    it('selects the Claude system default for the WSL distro rather than resetting the Windows host', async () => {
       Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
       process.env.ORCA_CLI_WSL_DISTRO = 'Ubuntu'
 
-      await expect(
-        ACCOUNT_HANDLERS['account select'](selectionContext('claude', 'system'))
-      ).rejects.toThrow('Select the Claude system default for a WSL distro in Orca Settings')
-      expect(callMock).not.toHaveBeenCalled()
+      await ACCOUNT_HANDLERS['account select'](selectionContext('claude', 'system'))
+      expect(callMock).toHaveBeenCalledWith('accounts.selectClaudeForTarget', {
+        accountId: null,
+        target: { runtime: 'wsl', wslDistro: 'Ubuntu' }
+      })
     })
   })
 })

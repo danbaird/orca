@@ -1,3 +1,5 @@
+import { startClaudeAccountRotation } from '../claude-accounts/claude-account-rotation-wiring'
+import { getAppEnvironment } from '../../shared/app-environment'
 import type { Store } from '../persistence/loading-store/store'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import type {
@@ -65,7 +67,15 @@ export function createOrcadAccountServices(args: {
   const services = createProviderAccountServices(store, {
     setClaudeStatusLineListener: args.setClaudeStatusLineListener
   })
+  const stopRotation = startClaudeAccountRotation({
+    claudeAccounts: services.claudeAccounts,
+    rateLimits: services.rateLimits,
+    paneAccounts: services.claudeRuntimeAuth.paneAccounts,
+    getSettings: () => store.getSettings(),
+    dataRoot: getAppEnvironment().getPath('userData')
+  })
   args.registerCleanup(() => {
+    stopRotation()
     services.rateLimits.stop()
     args.setClaudeStatusLineListener(null)
   })
@@ -74,8 +84,8 @@ export function createOrcadAccountServices(args: {
     getRuntimeHome: () => codexRuntimeHome,
     getSettings: () => store.getSettings()
   })
-  const prepareClaudeAuth: PrepareClaudeAuth = (target) =>
-    services.claudeRuntimeAuth.prepareForClaudeLaunch(target)
+  const prepareClaudeAuth: PrepareClaudeAuth = (target, context) =>
+    services.claudeRuntimeAuth.prepareForClaudeLaunch(target, context)
   const resumeLaunch = createCodexSessionResumeLaunchPreparation({
     getRuntimeHome: () => codexRuntimeHome,
     getSettings: () => store.getSettings()

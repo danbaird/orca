@@ -265,7 +265,13 @@ export function claudeStructuredLaunchPart(
       sources,
       { runtimeOnPath: false }
     )
-    const accountRecipe = await prepareClaudeLaunchAccount(router, env, accountHome.path)
+    // The chat's workspace and id let a repo pin or a recorded rotation pick its account.
+    const accountRecipe = await prepareClaudeLaunchAccount(router, env, accountHome.path, {
+      cwd,
+      workspaceId: record.location.workspaceId,
+      paneId: record.sessionId,
+      paneKind: 'session'
+    })
     const launchHome = accountRecipe.home
     const resumesTranscript = resumedWithoutRouter ?? (await resumes(launchHome))
     if (fork?.throughEntryId && !resumesTranscript) {

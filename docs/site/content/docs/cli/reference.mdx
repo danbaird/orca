@@ -406,9 +406,10 @@ orca account select --agent claude --account you@example.com    # id, email or l
 orca worktree create --name task --agent claude --prompt "..."
 orca account select --agent claude --account system             # back to your own sign-in
 orca account rm --agent codex --account old@example.com         # forget a saved account
+orca account usage --agent claude --json                        # every saved Claude account's 5-hour and 7-day windows
 ```
 
-A selection applies to every agent of that provider launched on the host after it — the same switch as the status-bar account menu — not to a single workspace. An email shared by several accounts (one sign-in in two organizations) is refused; pass the id instead. Antigravity has no `system` default, and `account rm` never removes system credentials.
+A selection applies to every agent of that provider launched on the host after it — the same switch as the status-bar account menu — not to a single workspace. A repository can pin its own Claude account with `claudeAccount` in [`orca.yaml`](/docs/model/orca-yaml) or a `claudeAccountByRepo` Settings entry, and Orca rotates a pane off an account at its 5-hour limit to the saved account with the most headroom. An email shared by several accounts (one sign-in in two organizations) is refused; pass the id instead. From a WSL distro, `--agent claude --account system` selects that distro's own sign-in. Antigravity has no `system` default, and `account rm` never removes system credentials.
 
 ## Artifacts
 
