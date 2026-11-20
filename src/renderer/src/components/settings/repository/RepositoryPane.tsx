@@ -30,6 +30,7 @@ import {
   RepositoryAgentTrustSection
 } from './RepositoryAgentTrustSection'
 import { RepositoryGitHubAccountSection } from './RepositoryGitHubAccountSection'
+import { RepositoryClaudeAccountSection } from './RepositoryClaudeAccountSection'
 import { useTranslate } from '@/i18n/use-translate'
 import { RepositoryWindowsRuntimeSection } from './execution/RepositoryWindowsRuntimeSection'
 import { matchesRepositoryIdentitySearch } from './identity/repository-identity-search'
@@ -184,6 +185,7 @@ export function RepositoryPane({
     t('auto.components.settings.repository.search.b24f00294a', 'Project Icon'),
     t('components.RepositoryJiraProjectSection.title', 'Default Jira project'),
     t('auto.components.settings.repository.search.githubAccount', 'GitHub Account'),
+    t('components.RepositoryClaudeAccountSection.title', 'Claude Account'),
     getRepositoryAgentTrustSearchEntry().title,
     t('auto.components.settings.repository.search.keepForkUpToDate', 'Keep Fork Up to Date'),
     t('auto.components.settings.repository.search.094adbe930', 'Default Worktree Base'),
@@ -319,6 +321,8 @@ export function RepositoryPane({
           updateRepo={updateSelectedRepo}
           forceVisible={forceFullPaneForRepoMatch}
         />
+
+        <RepositoryClaudeAccountSection repo={repo} forceVisible={forceFullPaneForRepoMatch} />
 
         {!isFolder ? (
           <>

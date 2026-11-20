@@ -3,6 +3,7 @@ import type { GlobalSettings } from '../../shared/global-settings-types'
 import type { ClaudeLaunchAccountSource, ClaudeLaunchContext } from './claude-launch-context'
 import type { ClaudePaneAccountRegistry } from './claude-pane-account-registry'
 import type { ClaudeRepoAccountPin } from './claude-repo-account-pin'
+import { claudePinnedAccountUnavailable } from './claude-profile-launch-errors'
 import type { ClaudeEnvPatch } from './environment'
 import { getSelectedClaudeAccountIdForTarget } from './runtime-selection'
 
@@ -26,8 +27,8 @@ export type ClaudeLaunchAccountResolverDeps = {
   now?: () => number
 }
 
-/** A held rotation, then the repo pin, then the global selection. A pin that needs sign-in
- *  falls back to the global selection with a warning, never to a silent failure. */
+/** A held rotation, then the repo pin, then the global selection. A pin whose account cannot
+ *  launch fails the launch: a pinned repo never runs on a different identity. */
 export class ClaudeLaunchAccountResolver {
   constructor(private readonly deps: ClaudeLaunchAccountResolverDeps) {}
 
@@ -50,8 +51,8 @@ export class ClaudeLaunchAccountResolver {
       if (this.deps.launchable(pin.accountId)) {
         return { accountId: pin.accountId, source: 'repo-pin', repoKey: pin.repoKey }
       }
-      console.warn(
-        `[claude-profile] Claude account ${pin.accountId} pinned for ${pin.repoKey} needs sign-in; launching on the global selection instead.`
+      throw claudePinnedAccountUnavailable(
+        `Claude account ${pin.accountId} is pinned for ${pin.repoKey} but is not signed in. Sign in to it in Settings > Accounts, or change the repo's claudeAccount. Orca will not launch this repo on another account.`
       )
     }
     return global

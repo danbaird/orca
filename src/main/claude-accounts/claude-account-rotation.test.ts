@@ -74,6 +74,14 @@ describe('chooseClaudeRotationTarget', () => {
 })
 
 describe('ClaudeAccountRotator', () => {
+  it('never rotates a repo-pinned pane to another account, even when its account is exhausted', async () => {
+    const r = rotator([candidate('a', 99, 10), candidate('b', 30, 30)], {
+      panes: [{ ...pane, source: 'repo-pin' }]
+    })
+    expect(await r.instance.evaluate()).toEqual([])
+    expect(r.recorded.size).toBe(0)
+  })
+
   it('moves a pane whose account crossed the threshold to the headroom account and restarts the chat', async () => {
     const r = rotator([candidate('a', 95, 10), candidate('b', 30, 30), candidate('c', 60, 10)])
     const events = await r.instance.evaluate()

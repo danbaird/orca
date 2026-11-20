@@ -62,6 +62,7 @@ function rotationPanes(registry: ClaudePaneAccountRegistry): ClaudeRotationPane[
     paneKind: record.paneKind,
     selectionKey: record.selectionKey,
     accountId: record.accountId,
+    source: record.source,
     cwd: record.cwd,
     repoKey: record.repoKey
   }))

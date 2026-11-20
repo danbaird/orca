@@ -11,6 +11,13 @@ export function claudeProfileMissing(): AgentSessionPreSpawnError {
   })
 }
 
+/** A repo's pinned account cannot launch; the launch stops rather than run on another identity. */
+export function claudePinnedAccountUnavailable(detail: string): AgentSessionPreSpawnError {
+  return new AgentSessionPreSpawnError(new Error(detail), {
+    reason: 'claudeAccountFolderMissing'
+  })
+}
+
 export function claudeProfileSetupFailed(): AgentSessionPreSpawnError {
   return new AgentSessionPreSpawnError(new Error(CLAUDE_PROFILE_SETUP_FAILED_MESSAGE), {
     reason: 'claudeAccountSetupFailed'

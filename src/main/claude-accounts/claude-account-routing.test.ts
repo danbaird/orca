@@ -58,8 +58,7 @@ function fixture(claudeAccountByRepo?: Record<string, string>) {
     env: {},
     runSetup: async () => ({ outcome: 'prepared', warnings: [], surfaces: {} }),
     paneAccounts,
-    resolveRepoPin: (context) =>
-      resolveClaudeRepoAccountPin(context, { settings, repos, warn: () => {} })
+    resolveRepoPin: (context) => resolveClaudeRepoAccountPin(context, { settings, repos })
   })
   const homes = {
     a: router.accountHome('a'),
@@ -125,20 +124,18 @@ describe('per-repo and per-pane Claude account routing', () => {
     expect(f.router.launchEnv({ paneId: 'pane-1' }).CLAUDE_CONFIG_DIR).toBe(f.homes.c)
   })
 
-  it('falls back to the global selection with a warning when the pinned account needs sign-in', () => {
+  it('fails the launch instead of using the global account when the pinned account needs sign-in', () => {
     const f = fixture()
     pinRepo(f.repoDir, 'c')
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(f.router.launchEnv({ cwd: f.repoDir }).CLAUDE_CONFIG_DIR).toBe(f.homes.a)
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('pinned for repo-1 needs sign-in'))
+    expect(() => f.router.launchEnv({ cwd: f.repoDir })).toThrow(/pinned for repo-1.*not signed in/)
+    expect(f.router.launchEnv().CLAUDE_CONFIG_DIR).toBe(f.homes.a)
   })
 
-  it('ignores a pin naming an unknown account rather than failing the launch', () => {
+  it('fails the launch instead of using the global account when the pin names an unknown account', () => {
     const f = fixture()
     pinRepo(f.repoDir, 'nobody@example.test')
-    expect(f.router.resolveLaunchAccount({ cwd: f.repoDir })).toEqual({
-      accountId: 'a',
-      source: 'global'
-    })
+    expect(() => f.router.resolveLaunchAccount({ cwd: f.repoDir })).toThrow(
+      /"nobody@example.test" is not a saved Claude account/
+    )
   })
 })

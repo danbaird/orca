@@ -31,6 +31,21 @@ export function getRepositoryPaneSearchEntries(
     (Boolean(options.windowsRuntimeSupported) &&
       getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID)
   return [
+    {
+      title: t('components.RepositoryClaudeAccountSection.title', 'Claude Account'),
+      description: t(
+        'components.RepositoryClaudeAccountSection.description',
+        'Claude account used for agents launched in this project.'
+      ),
+      keywords: [
+        repo.displayName,
+        ...translateSearchKeyword(
+          'components.RepositoryClaudeAccountSection.keyword',
+          'claude account',
+          { aliases: ['claude', 'account', 'login', 'subscription'] }
+        )
+      ]
+    },
     getRepositoryFormatterSearchEntry(t),
     getRepositoryAgentTrustSearchEntry(),
     {
