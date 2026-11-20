@@ -21503,6 +21503,16 @@
           "action": "Got it"
         }
       }
+    },
+    "RepositoryClaudeAccountSection": {
+      "title": "Claude Account",
+      "description": "Claude account used for agents launched in this project.",
+      "keyword": "claude account",
+      "global": "Global account (Settings > Accounts)",
+      "missingOption": "{{account}} (not saved)",
+      "needsSignInOption": "{{account}} (sign-in required)",
+      "empty": "No Claude accounts saved. Add one in Settings > Accounts.",
+      "unavailable": "This account is unavailable, so Claude will not launch in this project. Sign in again in Settings > Accounts or choose another account."
     }
   },
   "dashboardPopout": {

@@ -1,4 +1,4 @@
-import type { ClaudePaneKind } from './claude-launch-context'
+import type { ClaudeLaunchAccountSource, ClaudePaneKind } from './claude-launch-context'
 import type { ClaudePaneAccountRecord } from './claude-pane-account-registry'
 
 export type ClaudeRotationWindow = { usedPercent: number; resetsAt: number | null }
@@ -20,6 +20,8 @@ export type ClaudeRotationPane = {
   paneKind?: ClaudePaneKind
   selectionKey: string
   accountId: string | null
+  /** A repo-pinned pane is never rotated: moving it would cross the identity boundary the pin sets. */
+  source?: ClaudeLaunchAccountSource
   cwd?: string
   repoKey?: string
 }
@@ -143,7 +145,7 @@ export class ClaudeAccountRotator {
     const rateLimited = new Set(this.deps.rateLimitedSessions?.() ?? [])
     for (const pane of panes) {
       const current = pane.accountId ? byId.get(pane.accountId) : undefined
-      if (!current) {
+      if (!current || pane.source === 'repo-pin') {
         continue
       }
       const reason: ClaudeRotationReason | null = rateLimited.has(pane.paneId)

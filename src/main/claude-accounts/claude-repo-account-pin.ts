@@ -5,6 +5,7 @@ import type { ClaudeManagedAccount } from '../../shared/managed-account-types'
 import { parseOrcaYaml } from '../../shared/orca-yaml'
 import type { Repo } from '../../shared/repo-types'
 import type { ClaudeLaunchContext } from './claude-launch-context'
+import { claudePinnedAccountUnavailable } from './claude-profile-launch-errors'
 
 export type ClaudeRepoAccountPin = {
   accountId: string
@@ -23,7 +24,12 @@ export type ClaudeRepoPinDeps = {
   repos: readonly Pick<Repo, 'id' | 'path'>[]
   /** Reads `<dir>/orca.yaml`'s claudeAccount; injectable for tests. */
   readClaudeAccount?: (dir: string) => string | undefined
-  warn?: (message: string) => void
+}
+
+function unresolvedPin(source: string, error: string): Error {
+  return claudePinnedAccountUnavailable(
+    `${source}: ${error} Fix the pin or save and sign in to that account; Orca will not launch this repo on another account.`
+  )
 }
 
 // Walking further than this from the launch cwd no longer plausibly names the same checkout.
@@ -117,13 +123,12 @@ function candidateYamlDirs(context: ClaudeLaunchContext, repoPath: string | null
 /**
  * The account a repo pins for its launches: the settings map first (set on this machine for
  * repos whose orca.yaml is not ours to edit), then `claudeAccount` in the checkout's orca.yaml.
- * A pin naming an unknown account is reported and ignored rather than failing the launch.
+ * A pin naming an unknown or ambiguous account throws: it must not fall through to another account.
  */
 export function resolveClaudeRepoAccountPin(
   context: ClaudeLaunchContext,
   deps: ClaudeRepoPinDeps
 ): ClaudeRepoAccountPin | null {
-  const warn = deps.warn ?? ((message) => console.warn(`[claude-profile] ${message}`))
   const repo = repoFor(context, deps.repos)
   const byRepo = deps.settings.claudeAccountByRepo ?? {}
   if (repo) {
@@ -139,7 +144,7 @@ export function resolveClaudeRepoAccountPin(
       if ('accountId' in match) {
         return { accountId: match.accountId, repoKey: repo.id, source: 'settings' }
       }
-      warn(`claudeAccountByRepo for ${repo.id}: ${match.error}`)
+      throw unresolvedPin(`claudeAccountByRepo for ${repo.id}`, match.error)
     }
   }
   const read = deps.readClaudeAccount ?? readOrcaYamlClaudeAccount
@@ -152,8 +157,7 @@ export function resolveClaudeRepoAccountPin(
     if ('accountId' in match) {
       return { accountId: match.accountId, repoKey: repo?.id ?? dir, source: 'orca.yaml' }
     }
-    warn(`orca.yaml claudeAccount in ${dir}: ${match.error}`)
-    return null
+    throw unresolvedPin(`orca.yaml claudeAccount in ${dir}`, match.error)
   }
   return null
 }
