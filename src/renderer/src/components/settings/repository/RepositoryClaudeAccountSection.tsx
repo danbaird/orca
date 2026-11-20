@@ -36,14 +36,20 @@ export function RepositoryClaudeAccountSection({
   const labelId = useId()
   const savedAccountCount = useAppStore((state) => state.settings?.claudeManagedAccounts.length)
   const [saved, setSaved] = useState<readonly ClaudeManagedAccount[]>([])
+  const [loadFailed, setLoadFailed] = useState(false)
   const pins = useAppStore((state) => state.settings?.claudeAccountByRepo)
   const updateSettings = useAppStore((state) => state.updateSettings)
   useEffect(() => {
     let cancelled = false
     void window.api.claudeAccounts
       .list()
-      .then((state) => !cancelled && setSaved(state.accounts))
-      .catch(() => {})
+      .then((state) => {
+        if (!cancelled) {
+          setSaved(state.accounts)
+          setLoadFailed(false)
+        }
+      })
+      .catch(() => !cancelled && setLoadFailed(true))
     return () => {
       cancelled = true
     }
@@ -136,6 +142,14 @@ export function RepositoryClaudeAccountSection({
           {t(
             'components.RepositoryClaudeAccountSection.empty',
             'No Claude accounts saved. Add one in Settings > Accounts.'
+          )}
+        </p>
+      ) : null}
+      {loadFailed ? (
+        <p role="alert" className="text-xs text-destructive">
+          {t(
+            'components.RepositoryClaudeAccountSection.loadFailed',
+            'Could not load Claude accounts. Reopen settings to retry.'
           )}
         </p>
       ) : null}
